@@ -154,6 +154,7 @@ sentinelgrid/
 │   │   ├── services/
 │   │   │   ├── riskService.js      # Fusion logic (rules + ML)
 │   │   │   └── mlService.js        # ML service HTTP client
+│   │   │   ├── alertService.js
 │   │   ├── routes/
 │   │   │   ├── sensorRoutes.js
 │   │   │   └── alertRoutes.js
