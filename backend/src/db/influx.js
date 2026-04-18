@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const { InfluxDB, Point } = require("@influxdata/influxdb-client");
 
 const url = process.env.INFLUX_URL;
@@ -6,11 +8,11 @@ const org = process.env.INFLUX_ORG;
 const bucket = process.env.INFLUX_BUCKET;
 
 const client = new InfluxDB({ url, token });
+
 const writeApi = client.getWriteApi(org, bucket);
+const queryApi = client.getQueryApi(org);
 
-// Optional but useful
-writeApi.useDefaultTags({ app: "sentinelgrid" });
-
+// WRITE FUNCTION
 function writeSensorData(data) {
   const point = new Point("sensor_data")
     .floatField("gas", data.gas)
@@ -22,4 +24,9 @@ function writeSensorData(data) {
   writeApi.writePoint(point);
 }
 
-module.exports = { writeSensorData, writeApi };
+// EXPORT EVERYTHING
+module.exports = {
+  writeSensorData,
+  writeApi,
+  queryApi
+};
