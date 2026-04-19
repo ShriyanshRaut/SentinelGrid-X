@@ -16,61 +16,46 @@
 
 ---
 
-## What is SentinelGrid-X?
+## Overview
 
 Most industrial monitoring systems rely on fixed thresholds — "alert if gas > 500 ppm." That works until it doesn't. A slow gas leak at 380 ppm combined with rising temperature and micro-vibrations in a pipe joint is just as dangerous, but no single threshold catches it.
 
-SentinelGrid-X is built around that gap. It combines hardware sensor nodes (ESP32), a secure MQTT communication pipeline, a Node.js backend with a rule-based logic engine, and a Python ML service running Isolation Forest anomaly detection. The result is a system that understands *patterns*, not just numbers.
+SentinelGrid-X is built around that gap. It combines ESP32 sensor nodes, a secure MQTT communication pipeline, a Node.js backend with a rule-based risk engine, and a live React dashboard. Sensor data flows end-to-end in under a second — from hardware to browser.
 
-Data flows from physical sensors to a live React dashboard in under a second. When something looks wrong — whether a threshold is crossed or the ML model flags an unusual combination of readings — the system classifies the risk level and fires alerts automatically.
-
-It was built as a student engineering project, but the architecture mirrors real industrial IoT deployments.
+When conditions cross risk thresholds, the system classifies severity and dispatches alerts automatically. Built as a student engineering project, but architected like a production IoT deployment.
 
 ---
 
 ## How the Risk Engine Works
 
-SentinelGrid-X uses a **two-signal decision model**:
+Every incoming sensor reading passes through a **rule-based classification pipeline** in the backend:
 
-**Signal 1 — Rule-based engine:** Hard thresholds are checked immediately on every incoming reading. If gas exceeds 500 ppm, or temperature crosses 80°C, a rule flag is raised. Fast, deterministic, zero latency.
+1. The backend receives a validated MQTT payload (gas, temperature, vibration)
+2. Each value is checked against configurable thresholds per sensor type
+3. The number and severity of breached thresholds determine the final risk level
+4. The result is stored in PostgreSQL and pushed live to the dashboard via Socket.io
 
-**Signal 2 — ML anomaly score:** The Python service runs an Isolation Forest model trained on historical sensor data. It scores every reading between 0 and 1 based on how "isolated" (unusual) it is across all three sensor dimensions simultaneously. A reading can score high even if no individual threshold is crossed.
+| Conditions                        | Risk Level       |
+|-----------------------------------|------------------|
+| No thresholds breached            | 🟢 Low            |
+| One sensor mildly elevated        | 🟡 Moderate       |
+| One threshold breached            | 🟠 High           |
+| Multiple thresholds breached      | 🔴 Critical       |
 
-**Fusion:** The backend combines both signals:
-
-| Rule Flag | ML Score     | Risk Level   |
-|-----------|--------------|--------------|
-| None      | < 0.5        | 🟢 Low        |
-| None      | 0.5 – 0.7    | 🟡 Moderate   |
-| Triggered | OR > 0.7     | 🟠 High       |
-| Triggered | AND > 0.85   | 🔴 Critical   |
-
-`Moderate` is only possible because of ML — it's the early warning that pure threshold systems cannot produce.
-
----
-
-## Why Isolation Forest?
-
-Isolation Forest is an unsupervised ML algorithm that detects outliers by measuring how quickly a data point can be isolated using random binary splits. Anomalies are "few and different" — they get isolated in 2–3 splits. Normal readings, sitting in dense clusters of similar data, need 8–12 splits.
-
-For this system specifically:
-- **No labeled training data needed** — we don't need historical examples of failures
-- **Multi-sensor awareness** — scores are computed across gas + temperature + vibration together, not independently
-- **Millisecond inference** — fast enough for real-time sensor streams
-- **Works on normal-only training data** — the model learns what "normal" looks like and flags everything else
+On `High` or `Critical`, the alert system fires immediately — no polling, no delay.
 
 ---
 
 ## Features
 
-- 📡 500ms sensor polling from ESP32 nodes (gas, temperature, vibration)
-- 🔐 MQTT over TLS with per-device certificate authentication
-- 🧠 Dual-layer anomaly detection: rule engine + Isolation Forest
-- ⚡ Sub-second latency from sensor to dashboard via Socket.io
-- 📊 Live React dashboard with real-time charts and risk indicators
-- 🚨 Multi-channel alerting: push notification + SMS on High/Critical
-- 🗄️ Dual-database: InfluxDB (time-series) + PostgreSQL (users, alerts)
-- ☁️ Fully containerized, deployable to any cloud VM
+- 📡 Real-time sensor ingestion from ESP32 nodes via MQTT over TLS
+- 🔐 Device-level authentication with Mosquitto broker + certificates
+- ⚙️ Rule-based risk classification engine (gas, temperature, vibration)
+- ⚡ Sub-second data delivery to dashboard via Socket.io
+- 📊 Live React dashboard — sensor cards, alert feed, risk indicators
+- 🚨 Automated alerting on High/Critical risk events
+- 🗄️ InfluxDB for time-series sensor data, PostgreSQL for alerts and users
+- ☁️ Fully containerized with Docker Compose
 
 ---
 
@@ -86,55 +71,55 @@ For this system specifically:
            ▼
 ┌──────────────────────┐
 │  Secure Comms Layer  │
-│  Mosquitto Broker    │  Device auth + certificate validation
+│  Mosquitto Broker    │  Certificate auth + TLS termination
 └──────────┬───────────┘
-           │  Authenticated data
+           │  Validated payload
            ▼
 ┌──────────────────────────────────────────────────┐
 │                  Backend Layer                   │
 │         Node.js + Express + mqtt.js              │
 │                                                  │
-│  ┌─────────────────┐    ┌──────────────────────┐ │
-│  │  Rule Engine    │    │  REST API + Socket.io│ │
-│  │  (thresholds)   │    │  (data distribution) │ │
-│  └────────┬────────┘    └──────────────────────┘ │
-│           │  + ML score                           │
-│           ▼                                       │
-│  ┌─────────────────┐                             │
-│  │  Risk Classifier│  Low / Moderate / High /    │
-│  │  (fusion logic) │  Critical                   │
-│  └─────────────────┘                             │
-└───┬──────────┬──────────────┬────────────────────┘
-    │          │              │
-    ▼          ▼              ▼
-┌────────┐ ┌────────────┐ ┌──────────────────────┐
-│InfluxDB│ │ PostgreSQL │ │   Python ML Service   │
-│(metrics│ │(users,     │ │  Isolation Forest     │
-│& logs) │ │ alerts)    │ │  → anomaly score      │
-└────────┘ └────────────┘ └──────────┬───────────┘
-                                      │ predictions
-                                      ▼
-                          ┌───────────────────────┐
-                          │   Application Layer   │
-                          │   React Dashboard     │
-                          │   + Alert System      │
-                          │   (SMS / Push)        │
-                          └───────────────────────┘
+│  ┌──────────────────┐   ┌──────────────────────┐ │
+│  │  MQTT Subscriber │──►│  Risk Engine         │ │
+│  │  (subscriber.js) │   │  (riskService.js)    │ │
+│  └──────────────────┘   └──────────┬───────────┘ │
+│                                    │              │
+│  ┌──────────────────┐   ┌──────────▼───────────┐ │
+│  │  REST API        │   │  Alert Engine        │ │
+│  │  (sensorRoutes,  │   │  (alertService.js)   │ │
+│  │   alertRoutes)   │   └──────────────────────┘ │
+│  └──────────────────┘                            │
+│         │                     │                  │
+└─────────┼─────────────────────┼──────────────────┘
+          │                     │
+    ┌─────▼──────┐       ┌──────▼──────┐
+    │  InfluxDB  │       │ PostgreSQL  │
+    │ (raw sensor│       │ (alerts,    │
+    │  metrics)  │       │  users)     │
+    └────────────┘       └─────────────┘
+          │                     │
+          └──────────┬──────────┘
+                     │  Socket.io + REST
+                     ▼
+          ┌─────────────────────┐
+          │   React Frontend    │
+          │   Dashboard · Alerts│
+          │   Sensors · Navbar  │
+          └─────────────────────┘
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer            | Technologies                                                   |
-|------------------|----------------------------------------------------------------|
-| **Hardware**     | ESP32, MPU6050 (vibration), DHT22 (temp), MQ-2/MQ-135 (gas)  |
-| **Comms**        | MQTT (Mosquitto), TLS 1.2, per-device certificates            |
-| **Backend**      | Node.js, Express, mqtt.js, Socket.io, JWT auth                |
-| **ML Service**   | Python, scikit-learn (Isolation Forest), FastAPI              |
-| **Database**     | InfluxDB (time-series metrics), PostgreSQL (relational data)  |
-| **Frontend**     | React.js, Recharts, WebSocket real-time updates               |
-| **Deployment**   | Docker, Docker Compose, AWS EC2 / Azure VM                    |
+| Layer          | Technologies                                                   |
+|----------------|----------------------------------------------------------------|
+| **Hardware**   | ESP32, MPU6050 (vibration), DHT22 (temp), MQ-2/MQ-135 (gas)  |
+| **Comms**      | MQTT, Mosquitto broker, TLS 1.2, device certificates          |
+| **Backend**    | Node.js, Express, mqtt.js, Socket.io, JWT, REST API           |
+| **Database**   | InfluxDB (time-series sensor data), PostgreSQL (alerts/users) |
+| **Frontend**   | React, TypeScript, Vite, Tailwind CSS, shadcn/ui              |
+| **Deployment** | Docker, Docker Compose, AWS EC2 / Azure VM                    |
 
 ---
 
@@ -146,52 +131,101 @@ sentinelgrid/
 ├── backend/
 │   ├── src/
 │   │   ├── config/
-│   │   │   ├── db.js               # DB connection setup
-│   │   │   └── mqtt.js             # MQTT broker config
+│   │   │   ├── db.js                 # InfluxDB + PostgreSQL init
+│   │   │   └── mqtt.js               # Mosquitto broker config
+│   │   │
 │   │   ├── controllers/
-│   │   │   ├── sensorController.js
-│   │   │   └── alertController.js
+│   │   │   ├── sensorController.js   # Handles sensor data endpoints
+│   │   │   └── alertController.js    # Handles alert CRUD
+│   │   │
 │   │   ├── services/
-│   │   │   ├── riskService.js      # Fusion logic (rules + ML)
-│   │   │   └── mlService.js        # ML service HTTP client
-│   │   │   ├── alertService.js
+│   │   │   ├── riskService.js        # Rule-based risk classification
+│   │   │   ├── alertService.js       # Alert creation + dispatch
+│   │   │   └── mlService.js          # ML service client (future)
+│   │   │
 │   │   ├── routes/
 │   │   │   ├── sensorRoutes.js
 │   │   │   └── alertRoutes.js
+│   │   │
 │   │   ├── mqtt/
-│   │   │   └── subscriber.js       # MQTT message handler
+│   │   │   └── subscriber.js         # MQTT message handler + parser
+│   │   │
 │   │   ├── db/
-│   │   │   ├── influx.js
-│   │   │   └── postgres.js
+│   │   │   ├── influx.js             # InfluxDB write/query client
+│   │   │   └── postgres.js           # PostgreSQL query client
+│   │   │
 │   │   ├── utils/
-│   │   │   ├── formatter.js
+│   │   │   ├── formatter.js          # Payload normalization
+│   │   │   ├── validator.js          # Incoming data validation
 │   │   │   └── logger.js
-│   │   │   └── validator.js
+│   │   │
 │   │   ├── app.js
 │   │   └── server.js
+│   │
 │   ├── Dockerfile
 │   ├── package.json
 │   └── .env.example
 │
-├── ml-service/
-│   ├── app.py                      # FastAPI inference endpoint
+├── ml-service/                       # Placeholder — Isolation Forest (future)
+│   ├── app.py
 │   ├── model/
-│   │   ├── train.py                # Isolation Forest training
-│   │   └── isolation_forest.pkl    # Serialized model
+│   │   ├── train.py
+│   │   └── isolation_forest.pkl
 │   ├── Dockerfile
 │   └── requirements.txt
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── charts/             # Sensor time-series charts
-│   │   │   └── alerts/             # Alert panel + risk badges
+│   │   ├── app/
+│   │   │   ├── layout.tsx            # Root layout wrapper
+│   │   │   └── providers.tsx         # Global context providers
+│   │   │
 │   │   ├── pages/
-│   │   │   └── Dashboard.jsx
-│   │   ├── services/
-│   │   │   ├── api.js
-│   │   │   └── socket.js
-│   │   └── App.js
+│   │   │   ├── Index.tsx             # Landing / entry route
+│   │   │   ├── DashboardPage.tsx     # Main monitoring view
+│   │   │   ├── SensorsPage.tsx       # Per-sensor detail view
+│   │   │   ├── AlertsPage.tsx        # Alert history + filters
+│   │   │   └── NotFound.tsx
+│   │   │
+│   │   ├── components/
+│   │   │   ├── dashboard/
+│   │   │   │   ├── Dashboard.tsx     # Dashboard layout + grid
+│   │   │   │   └── SensorCard.tsx    # Live sensor value card
+│   │   │   │
+│   │   │   ├── alerts/
+│   │   │   │   ├── AlertCard.tsx     # Individual alert entry
+│   │   │   │   └── AlertsList.tsx    # Alert feed container
+│   │   │   │
+│   │   │   ├── site/
+│   │   │   │   ├── Navbar.tsx
+│   │   │   │   ├── Hero.tsx
+│   │   │   │   └── Footer.tsx
+│   │   │   │
+│   │   │   └── common/
+│   │   │       ├── Loader.tsx
+│   │   │       └── EmptyState.tsx
+│   │   │
+│   │   ├── ui/                       # shadcn/ui primitives
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── badge.tsx
+│   │   │   └── ...
+│   │   │
+│   │   ├── hooks/
+│   │   │   ├── useSensors.ts         # Sensor data fetching + socket sub
+│   │   │   └── useAlerts.ts          # Alert fetching + real-time updates
+│   │   │
+│   │   ├── lib/
+│   │   │   ├── api.ts                # Axios/fetch API client
+│   │   │   └── utils.ts              # Shared helpers (cn, formatters)
+│   │   │
+│   │   └── styles/
+│   │       └── globals.css
+│   │
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
 │   └── package.json
 │
 ├── firmware/
@@ -205,9 +239,9 @@ sentinelgrid/
 │       └── vibration_sensor.ino
 │
 ├── sensor-processing/
-│   ├── calibration/                # Per-sensor calibration scripts
-│   ├── processing/                 # Signal filtering & ADC conversion
-│   └── formatter/                  # JSON payload formatter
+│   ├── calibration/                  # Per-sensor calibration scripts
+│   ├── processing/                   # Signal filtering & ADC conversion
+│   └── formatter/                    # JSON payload formatter
 │
 ├── docker-compose.yml
 └── README.md
@@ -218,15 +252,15 @@ sentinelgrid/
 ## Data Flow
 
 ```
-1. SENSE      →  ESP32 reads gas, temperature, and vibration every 500ms
-2. FORMAT     →  Sensor values packaged as JSON payload
-3. TRANSMIT   →  Payload published to MQTT broker over TLS
-4. VALIDATE   →  Backend authenticates device and cleans incoming data
-5. STORE      →  Raw readings written to InfluxDB
-6. ANALYZE    →  Data forwarded to Python ML service → Isolation Forest scores it
-7. DECIDE     →  Rule engine flag + ML score fused → Low / Moderate / High / Critical
-8. PUSH       →  Risk level + data broadcast via Socket.io to dashboard
-9. ALERT      →  If risk ≥ High: push notification and/or SMS dispatched
+1. SENSE      →  ESP32 reads gas, temperature, vibration every 500ms
+2. FORMAT     →  Sensor values packaged into a JSON payload
+3. TRANSMIT   →  Payload published to Mosquitto broker over MQTT/TLS
+4. RECEIVE    →  subscriber.js picks up the message, validates the payload
+5. CLASSIFY   →  riskService.js runs threshold checks → risk level assigned
+6. STORE      →  Raw readings → InfluxDB  |  Alerts → PostgreSQL
+7. BROADCAST  →  Socket.io pushes risk level + sensor data to all clients
+8. RENDER     →  React dashboard updates sensor cards and alert feed live
+9. ALERT      →  If risk ≥ High: alert record created, notification dispatched
 ```
 
 ---
@@ -238,6 +272,7 @@ sentinelgrid/
 - Node.js ≥ 18, Python ≥ 3.10
 - Docker + Docker Compose
 - PlatformIO (for ESP32 firmware flashing)
+- Bun or npm (frontend)
 
 ### Setup
 
@@ -248,33 +283,30 @@ cd sentinelgrid
 
 # 2. Configure environment variables
 cp backend/.env.example backend/.env
-# Fill in: MQTT host, DB credentials, JWT secret, ML service URL
+# Edit .env — set MQTT host, InfluxDB/PostgreSQL credentials, JWT secret
 
-# 3. Start all services (backend, ML, DBs, broker)
+# 3. Start all backend services
 docker-compose up --build
+# Starts: Node.js backend, Mosquitto broker, InfluxDB, PostgreSQL
 
-# 4. Train the ML model (first run only)
-cd ml-service
-pip install -r requirements.txt
-python model/train.py
-
-# 5. Flash the ESP32 firmware
-# Open /firmware in PlatformIO
-# Set WiFi credentials and MQTT broker IP in config.h
-# Upload to device
-
-# 6. Start the frontend
+# 4. Start the frontend
 cd frontend
-npm install
-npm run dev
+bun install       # or: npm install
+bun run dev       # or: npm run dev
 ```
 
-| Service        | URL                        |
-|----------------|----------------------------|
-| Dashboard      | http://localhost:3000       |
-| Backend API    | http://localhost:4000       |
-| ML Service     | http://localhost:8000       |
-| InfluxDB UI    | http://localhost:8086       |
+```bash
+# 5. Flash ESP32 firmware (requires PlatformIO)
+# Open /firmware in VS Code with PlatformIO extension
+# Set your WiFi SSID, password, and MQTT broker IP in config.h
+# Then: pio run --target upload
+```
+
+| Service        | URL                         |
+|----------------|-----------------------------|
+| Dashboard      | http://localhost:5173        |
+| Backend API    | http://localhost:4000        |
+| InfluxDB UI    | http://localhost:8086        |
 
 ---
 
@@ -282,7 +314,7 @@ npm run dev
 
 | Name        | Responsibility                          |
 |-------------|------------------------------------------|
-| **Shakti**  | Backend architecture & ML integration   |
+| **Shakti**  | Backend architecture & risk engine      |
 | **Soham**   | React dashboard & real-time UI          |
 | **Ekansh**  | Sensor integration & signal processing  |
 | **Swayam**  | ESP32 firmware & MQTT communication     |
@@ -291,11 +323,11 @@ npm run dev
 
 ## Future Scope
 
-- **Predictive maintenance** — shift from anomaly detection to failure forecasting using LSTM on time-series windows
-- **Per-device ML models** — federated learning so each node trains locally without centralizing raw data
-- **OTA firmware updates** — push config and calibration changes to ESP32 nodes remotely
-- **Mobile app** — native push alerts with sensor history, beyond SMS
-- **Multi-site support** — single dashboard managing distributed sensor grids across locations
+- **ML anomaly detection** — Isolation Forest layer on top of the rule engine for multi-sensor pattern recognition
+- **Predictive maintenance** — LSTM-based failure forecasting on InfluxDB time-series windows
+- **OTA firmware updates** — push calibration and config changes to ESP32 nodes remotely
+- **Mobile app** — native push alerts with sensor history on-device
+- **Multi-site support** — single dashboard managing distributed sensor grids
 
 ---
 
