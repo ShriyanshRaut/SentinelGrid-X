@@ -302,32 +302,13 @@ bun run dev       # or: npm run dev
 # Then: pio run --target upload
 ```
 
-| Service        | URL                         |
-|----------------|-----------------------------|
-| Dashboard      | http://localhost:5173        |
-| Backend API    | http://localhost:4000        |
-| InfluxDB UI    | http://localhost:8086        |
-
----
-
-## Team
-
-| Name        | Responsibility                          |
-|-------------|------------------------------------------|
-| **Shakti**  | Backend architecture & risk engine      |
-| **Soham**   | React dashboard & real-time UI          |
-| **Ekansh**  | Sensor integration & signal processing  |
-| **Swayam**  | ESP32 firmware & MQTT communication     |
-
----
-
 ## Future Scope
 
 - **ML anomaly detection** — Isolation Forest layer on top of the rule engine for multi-sensor pattern recognition
-- **Predictive maintenance** — LSTM-based failure forecasting on InfluxDB time-series windows
-- **OTA firmware updates** — push calibration and config changes to ESP32 nodes remotely
-- **Mobile app** — native push alerts with sensor history on-device
-- **Multi-site support** — single dashboard managing distributed sensor grids
+- **Alert intelligence (PostgreSQL)** — store alert history to detect recurring patterns, frequency spikes, and false   positives  
+- **Alert intelligence (PostgreSQL)** — analyze alert history to detect recurring patterns, frequency spikes, and  false positives
+- **Mobile interface (in progress)** — building a React Native app to view live sensor data and alerts on the go 
+- **Multi-site support** — single dashboard managing distributed sensor grids  
 
 ---
 
