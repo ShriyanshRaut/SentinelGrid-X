@@ -14,13 +14,23 @@ function formatSensorData(data) {
 
 // Simple rule-based status (temporary risk engine preview)
 function getStatus(data) {
-  if (data.gas > 70 || data.temp > 50 || data.vibration === 1) {
+  const { gas, temp, vibration } = data;
+
+  if (
+    gas > 80 ||
+    temp > 50 ||
+    (vibration > 1 && gas > 60)
+  ) {
     return "HIGH";
-  } else if (data.gas > 40 || data.temp > 35) {
+  } 
+  else if (
+    gas > 50 ||
+    temp > 35
+  ) {
     return "MEDIUM";
-  } else {
+  } 
+  else {
     return "NORMAL";
   }
 }
-
 module.exports = { formatSensorData };

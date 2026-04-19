@@ -1,5 +1,5 @@
 import { Flame, Thermometer, Waves } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { fetchSensors, type SensorReading } from "@/lib/api";
 
 const sparkline = (seed: number, color: string) => {
@@ -27,32 +27,43 @@ const Dashboard = () => {
     const load = () => {
       fetchSensors()
         .then((res) => {
-          setData(res);
+          setData(Array.isArray(res) ? res : []);
           setLastUpdated(new Date());
         })
-        .catch((err) => {
-          console.error(err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+        .catch(console.error)
+        .finally(() => setLoading(false));
     };
 
     load();
 
-    // 🔁 auto refresh every 3 sec
     const interval = setInterval(load, 3000);
-
     return () => clearInterval(interval);
   }, []);
 
-  const latest = data[data.length - 1];
+  // 🧠 FIX: always get VALID + LATEST sensor safely
+  const latest = useMemo(() => {
+    const valid = data.filter(
+      (s) =>
+        typeof s.gas === "number" &&
+        typeof s.temp === "number" &&
+        typeof s.vibration === "number" &&
+        s.timestamp
+    );
+
+    if (valid.length === 0) return null;
+
+    return [...valid].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() -
+        new Date(a.timestamp).getTime()
+    )[0];
+  }, [data]);
 
   const metrics = [
     {
       icon: Flame,
       label: "Gas (CH₄)",
-      value: latest?.gas?.toFixed(1) ?? "--",
+      value: latest?.gas != null ? latest.gas.toFixed(1) : "--",
       unit: "ppm",
       color: "hsl(217 100% 62%)",
       seed: 1,
@@ -60,7 +71,8 @@ const Dashboard = () => {
     {
       icon: Thermometer,
       label: "Temperature",
-      value: latest?.temperature?.toFixed(1) ?? "--",
+      // ✅ FIXED HERE
+      value: latest?.temp != null ? latest.temp.toFixed(1) : "--",
       unit: "°C",
       color: "hsl(265 90% 66%)",
       seed: 2,
@@ -68,7 +80,10 @@ const Dashboard = () => {
     {
       icon: Waves,
       label: "Vibration",
-      value: latest?.vibration?.toFixed(2) ?? "--",
+      value:
+        latest?.vibration != null
+          ? latest.vibration.toFixed(2)
+          : "--",
       unit: "g",
       color: "hsl(190 95% 60%)",
       seed: 3,
@@ -79,19 +94,23 @@ const Dashboard = () => {
     <section id="dashboard" className="py-24">
       <div className="mx-auto max-w-7xl px-6">
         
-        {/* 🔴 LIVE STATUS BAR */}
+        {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-4xl font-bold">Live Sensor Data</h2>
 
           <div className="text-sm text-muted-foreground">
             {lastUpdated
-              ? `Updated: ${lastUpdated.toLocaleTimeString()}`
+              ? `Updated: ${lastUpdated.toLocaleTimeString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                })}`
               : "Loading..."}
           </div>
         </div>
 
         {loading ? (
-          <p className="text-center text-muted-foreground">Loading...</p>
+          <p className="text-center text-muted-foreground">
+            Loading...
+          </p>
         ) : (
           <div className="grid md:grid-cols-3 gap-4">
             {metrics.map((m) => (

@@ -36,11 +36,10 @@ async function request<T>(path: string): Promise<T> {
 
 // ---------------- API ----------------
 
-// ✅ CLEAN + SAFE
 export const fetchSensors = async (): Promise<SensorReading[]> => {
   const data = await request<SensorReading[]>("/sensors");
 
-  // 🛡️ defensive filtering (prevents UI crashes)
+  //  defensive filtering (prevents UI crashes)
   return data
     .filter(
       (s) =>
@@ -58,7 +57,7 @@ export const fetchSensors = async (): Promise<SensorReading[]> => {
     }));
 };
 
-// ✅ Alerts (already good)
+// Alerts (already good)
 export const fetchAlerts = async (): Promise<AlertItem[]> => {
   const data = await request<AlertItem[]>("/alerts");
 
@@ -72,6 +71,19 @@ export const fetchAlerts = async (): Promise<AlertItem[]> => {
 // ---------------- UTILS ----------------
 
 export function formatTimestamp(ts: string): string {
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? ts : d.toLocaleString();
+  // 👇 force treat as UTC
+  const d = new Date(ts.endsWith("Z") ? ts : ts + "Z");
+
+  if (isNaN(d.getTime())) return ts;
+
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour12: true,
+  });
 }

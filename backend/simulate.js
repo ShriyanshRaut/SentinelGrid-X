@@ -1,8 +1,9 @@
 const mqtt = require("mqtt");
 
-const client = mqtt.connect("mqtt://test.mosquitto.org");
+const MQTT_BROKER = "mqtt://test.mosquitto.org";
+const TOPIC = "sentinelgrid/shriyansh/device1";
 
-const TOPIC = "sentinelgrid/sensor/data";
+const client = mqtt.connect(MQTT_BROKER);
 
 client.on("connect", () => {
   console.log(" Simulator connected");
@@ -17,6 +18,6 @@ client.on("connect", () => {
 
     client.publish(TOPIC, JSON.stringify(data));
 
-    console.log(" Sent:", data);
+    console.log("Sent:", data);
   }, 2000);
 });

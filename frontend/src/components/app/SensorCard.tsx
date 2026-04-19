@@ -7,37 +7,40 @@ interface SensorCardProps {
 }
 
 const SensorCard = ({ sensor }: SensorCardProps) => {
-  //  derive status from values (since sensors don't have status)
+  // derive status
   const isHigh =
     (sensor.gas ?? 0) > 80 ||
     (sensor.temp ?? 0) > 50 ||
     (sensor.vibration ?? 0) > 1;
 
-  // safe timestamp handling (prevents crashes)
+  // short time (HH:MM:SS)
   const timeLabel = sensor.timestamp
     ? sensor.timestamp.slice(11, 19)
     : "--:--:--";
 
+  // full formatted time (IST)
   const fullTime = sensor.timestamp
-    ? formatTimestamp(sensor.timestamp)
-    : "No timestamp";
+    ? new Date(sensor.timestamp).toLocaleTimeString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      })
+    : "--:--:--";
 
   return (
     <div className="glass rounded-2xl p-6 border-gradient hover:-translate-y-1 transition-transform duration-500">
       <div className="flex items-center justify-between mb-5">
         <div>
-          {/*  short time */}
+          {/* short time */}
           <p className="font-mono text-xs text-muted-foreground">
             #{timeLabel}
           </p>
 
-          {/*  full timestamp */}
-          <p className="text-xs text-muted-foreground mt-1">
+          {/* full timestamp */}
+          <p className="font-mono text-xs text-muted-foreground">
             {fullTime}
           </p>
         </div>
 
-        {/*  status badge */}
+        {/* status badge */}
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-mono border ${
             isHigh
@@ -98,7 +101,7 @@ const Metric = ({
   <div className="rounded-xl bg-card/60 border border-border p-3">
     <div
       className="flex items-center gap-1.5 mb-1.5 text-muted-foreground"
-      style={{ color }} // (fine for now, ignore ESLint warning)
+      style={{ color }}
     >
       {icon}
       <span className="text-[10px] font-mono uppercase tracking-wider">
@@ -108,7 +111,7 @@ const Metric = ({
 
     <div className="flex items-baseline gap-1">
       <span className="font-display text-xl font-bold text-foreground">
-        {typeof value === "number" ? value.toFixed(1) : "--"}
+        {value != null ? value.toFixed(1) : "--"}
       </span>
       <span className="text-[10px] text-muted-foreground font-mono">
         {unit}

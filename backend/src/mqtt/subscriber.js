@@ -5,14 +5,21 @@ const { writeSensorData } = require("../db/influx");
 const { createAlert } = require("../services/alertService");
 const logger = require("../utils/logger");
 
-const client = mqtt.connect("mqtt://test.mosquitto.org");
+// Env config
+const MQTT_BROKER =
+  process.env.MQTT_BROKER || "mqtt://test.mosquitto.org";
+const TOPIC =
+  process.env.MQTT_TOPIC || "sentinelgrid/shriyansh/device1";
 
-const TOPIC = "sentinelgrid/sensor/data";
+// 🧠 Prevent duplicate processing
+let lastTimestamp = null;
+
+const client = mqtt.connect(MQTT_BROKER);
 
 client.on("connect", () => {
-  logger.info("Connected to MQTT Broker");
+  logger.info(`Connected to MQTT Broker: ${MQTT_BROKER}`);
 
-  client.subscribe(TOPIC, (err) => {
+  client.subscribe(TOPIC, { qos: 0 }, (err) => {
     if (!err) {
       logger.info(`Subscribed to topic: ${TOPIC}`);
     } else {
@@ -21,12 +28,20 @@ client.on("connect", () => {
   });
 });
 
-client.on("message", async (topic, message) => {
-  // Gate 1: Topic filter
+client.on("message", async (topic, message, packet) => {
   if (topic !== TOPIC) return;
 
   try {
-    const data = JSON.parse(message.toString());
+    const raw = message.toString();
+    const data = JSON.parse(raw);
+
+    console.log("📡 RAW MQTT:", data);
+
+    // 🧠 Ignore retained messages (important for public broker)
+    if (packet.retain) {
+      console.log("⚠️ Ignored retained message");
+      return;
+    }
 
     // Gate 2: Validation
     if (!isValidSensorData(data)) {
@@ -37,29 +52,47 @@ client.on("message", async (topic, message) => {
     // Gate 3: Formatting
     const formattedData = formatSensorData(data);
 
-    // Gate 4: Store in InfluxDB
-    writeSensorData(formattedData);
+    // 🧠 Ensure timestamp exists
+    if (!formattedData.timestamp) {
+      formattedData.timestamp = new Date().toISOString();
+    }
 
-    // Debug (temporary, remove later if you want)
-    logger.info("STATUS CHECK", formattedData.status);
+    // 🧠 Duplicate filter
+    if (formattedData.timestamp === lastTimestamp) return;
+    lastTimestamp = formattedData.timestamp;
+
+    // Gate 4: InfluxDB
+    try {
+      writeSensorData(formattedData);
+      console.log("📥 Written to Influx:", formattedData);
+    } catch (err) {
+      logger.error("Influx write failed", err);
+    }
+
+    logger.info(`STATUS: ${formattedData.status}`);
 
     // Gate 5: Alert Logic
     if (formattedData.status === "HIGH") {
       try {
-        logger.warn(" HIGH DETECTED", formattedData);
+        logger.warn(
+          `🚨 NEW ALERT → gas=${formattedData.gas}, temp=${formattedData.temp}`
+        );
 
         await createAlert(formattedData);
-
-        logger.warn(` ALERT STORED: gas=${formattedData.gas}, temp=${formattedData.temp}`);
       } catch (err) {
-        logger.error(" Failed to store alert", err);
+        logger.error("Failed to store alert", err);
       }
     }
-
-    // Final log
-    logger.info("Sensor data processed", formattedData);
-
   } catch (err) {
     logger.error("Invalid JSON received", err.message);
   }
+});
+
+// Stability
+client.on("error", (err) => {
+  logger.error("MQTT Connection Error:", err);
+});
+
+client.on("reconnect", () => {
+  logger.warn("Reconnecting to MQTT...");
 });

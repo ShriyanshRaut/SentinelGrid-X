@@ -3,20 +3,18 @@ const pool = require("../db/postgres");
 async function getAlerts(req, res) {
   try {
     const result = await pool.query(
-      "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 50"
+      "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 20"
     );
 
-    //  Debug once (you can remove later)
-    console.log("ALERT ROW:", result.rows[0]);
+    console.log("Fetched alerts:", result.rows.length);
 
-    //  Normalize data strictly (no guessing)
     const formatted = result.rows.map((row) => ({
       id: row.id,
       gas: row.gas,
-      temp: row.temp,              // exact DB field
+      temp: row.temp,
       vibration: row.vibration,
       status: row.status,
-      timestamp: row.timestamp,
+      timestamp: new Date(row.timestamp).toISOString(), // ✅ FIXED
     }));
 
     res.status(200).json(formatted);
