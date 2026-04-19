@@ -1,49 +1,47 @@
-const { queryApi } = require("../db/influx");
+const { queryApi } = require("../db/influx"); // adjust path if needed
 
-async function getSensorData(req, res) {
+const getSensorData = async (req, res) => {
   try {
-    const results = [];
-
-    const fluxQuery = `
+    const query = `
       from(bucket: "${process.env.INFLUX_BUCKET}")
-        |> range(start: -10m)
+        |> range(start: -24h)
+        |> filter(fn: (r) => r._measurement == "sensor_data")
+        |> pivot(rowKey:["_time"], columnKey:["_field"], valueColumn:"_value")
+        |> sort(columns: ["_time"], desc: true)
+        |> limit(n: 20)
     `;
 
-    queryApi.queryRows(fluxQuery, {
-      next(row, tableMeta) {
-        const obj = tableMeta.toObject(row);
-        results.push(obj);
-      },
+    const result = [];
 
-      error(error) {
-        console.error("Influx Query Error:", error);
-        res.status(500).json({ error: "Influx query failed" });
-      },
+    await new Promise((resolve, reject) => {
+      queryApi.queryRows(query, {
+        next(row, tableMeta) {
+          const data = tableMeta.toObject(row);
 
-      complete() {
-        //  Transform row-based data → structured JSON
-        const formatted = {};
+          console.log("ROW:", data);
 
-        results.forEach((row) => {
-          const time = row._time;
-
-          if (!formatted[time]) {
-            formatted[time] = {
-              timestamp: time,
-            };
-          }
-
-          formatted[time][row._field.toLowerCase()] = row._value;
-        });
-
-        res.json(Object.values(formatted));
-      },
+          result.push({
+            gas: data.gas,
+            temp: data.temp ,
+            vibration: data.vibration,
+            timestamp: data._time,
+          });
+        },
+        error(error) {
+          console.error("Influx Query Error:", error);
+          reject(error);
+        },
+        complete() {
+          resolve();
+        },
+      });
     });
 
+    res.json(result);
   } catch (err) {
     console.error("Controller Error:", err);
-    res.status(500).json({ error: "Error fetching sensor data" });
+    res.status(500).json({ error: "Influx query failed" });
   }
-}
+};
 
 module.exports = { getSensorData };

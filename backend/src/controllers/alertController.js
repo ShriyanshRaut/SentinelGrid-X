@@ -5,9 +5,28 @@ async function getAlerts(req, res) {
     const result = await pool.query(
       "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 50"
     );
-    res.json(result.rows);
+
+    //  Debug once (you can remove later)
+    console.log("ALERT ROW:", result.rows[0]);
+
+    //  Normalize data strictly (no guessing)
+    const formatted = result.rows.map((row) => ({
+      id: row.id,
+      gas: row.gas,
+      temp: row.temp,              // exact DB field
+      vibration: row.vibration,
+      status: row.status,
+      timestamp: row.timestamp,
+    }));
+
+    res.status(200).json(formatted);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch alerts" });
+    console.error("Error fetching alerts:", err.message);
+
+    res.status(500).json({
+      error: "Failed to fetch alerts",
+      details: err.message,
+    });
   }
 }
 
