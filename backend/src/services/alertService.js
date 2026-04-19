@@ -7,9 +7,9 @@ async function createAlert(data) {
   `;
 
   const values = [
-    data.gas,
-    data.temp,
-    data.vibration,
+    data.gas ?? 0,
+    data.temp ?? 0,         // prevents null from entering DB
+    data.vibration ?? 0,
     data.status,
     data.timestamp,
   ];

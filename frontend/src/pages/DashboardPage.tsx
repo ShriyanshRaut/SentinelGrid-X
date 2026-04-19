@@ -63,7 +63,7 @@ const DashboardPage = () => {
   }, []);
 
   const { avgGas, avgTemp, avgVib, chartData } = useMemo(() => {
-    // ✅ ONLY KEEP FULLY VALID SENSOR ROWS
+    //  ONLY KEEP FULLY VALID SENSOR ROWS
     const validSensors = sensors.filter(
       (s) =>
         typeof s.gas === "number" &&
@@ -72,7 +72,7 @@ const DashboardPage = () => {
         s.timestamp // also ensure timestamp exists
     );
 
-    // ✅ IF NOTHING VALID → SAFE EMPTY STATE
+    //  IF NOTHING VALID → SAFE EMPTY STATE
     if (validSensors.length === 0) {
       return {
         avgGas: "—",
@@ -82,7 +82,7 @@ const DashboardPage = () => {
       };
     }
 
-    // ✅ SAFE SUM
+    //  SAFE SUM
     const sum = validSensors.reduce(
       (acc, s) => ({
         gas: acc.gas + s.gas!,
@@ -94,14 +94,14 @@ const DashboardPage = () => {
 
     const n = validSensors.length;
 
-    // ✅ SORT BY TIME (SAFE)
+    //  SORT BY TIME (SAFE)
     const sorted = [...validSensors].sort(
       (a, b) =>
         new Date(a.timestamp!).getTime() -
         new Date(b.timestamp!).getTime()
     );
 
-    // ✅ BUILD CHART DATA
+    // BUILD CHART DATA
     const chart = sorted.map((s, i) => ({
       t: new Date(s.timestamp!).toLocaleTimeString([], {
         hour: "2-digit",
@@ -122,7 +122,7 @@ const DashboardPage = () => {
 
   const totalAlerts = alerts.length;
 
-  // ✅ LOADING
+  //  LOADING
   if (loading && sensors.length === 0) {
     return (
       <AppShell
@@ -134,7 +134,7 @@ const DashboardPage = () => {
     );
   }
 
-  // ✅ ERROR
+  // ERROR
   if (error) {
     return (
       <AppShell

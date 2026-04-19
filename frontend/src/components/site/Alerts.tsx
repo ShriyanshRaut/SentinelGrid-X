@@ -41,12 +41,12 @@ const Alerts = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="text-red-500" />
                   <span className="font-semibold">
-                    {a.risk || "ALERT"}
+                    {a.status || "ALERT"}
                   </span>
                 </div>
 
                 <p className="text-sm text-muted-foreground mb-2">
-                  Gas: {a.gas ?? "--"} | Temp: {a.temperature ?? "--"} |
+                  Gas: {a.gas ?? "--"} | Temp: {a.temp ?? "--"} |
                   Vib: {a.vibration ?? "--"}
                 </p>
 

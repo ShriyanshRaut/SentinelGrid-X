@@ -24,7 +24,6 @@ const AlertCard = ({ alert }: AlertCardProps) => {
           <span className="h-2.5 w-2.5 rounded-full bg-destructive animate-pulse-ring" />
         </div>
 
-        {/* ✅ FIXED TITLE */}
         <h3 className="font-display font-semibold text-lg mb-1">
           Critical reading on sensor
         </h3>
@@ -33,7 +32,7 @@ const AlertCard = ({ alert }: AlertCardProps) => {
           {formatTimestamp(alert.timestamp)}
         </p>
 
-        <div className="grid grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <Stat label="Gas" value={alert.gas} unit="ppm" />
           <Stat label="Temp" value={alert.temp} unit="°C" />
           <Stat label="Vib" value={alert.vibration} unit="g" />
@@ -51,18 +50,22 @@ const Stat = ({
   label: string;
   value?: number;
   unit: string;
-}) => (
-  <div className="rounded-lg bg-background/40 border border-border p-2.5">
-    <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-      {label}
-    </p>
-    <p className="font-display text-base font-bold text-foreground">
-      {typeof value === "number" ? value.toFixed(1) : "--"}
-      <span className="text-[10px] text-muted-foreground font-mono ml-1">
-        {unit}
-      </span>
-    </p>
-  </div>
-);
+}) => {
+  if (value == null) return null;
+
+  return (
+    <div className="rounded-lg bg-background/40 border border-border p-2.5">
+      <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="font-display text-base font-bold text-foreground">
+        {value.toFixed(1)}
+        <span className="text-[10px] text-muted-foreground font-mono ml-1">
+          {unit}
+        </span>
+      </p>
+    </div>
+  );
+};
 
 export default AlertCard;
