@@ -37,10 +37,10 @@ Every incoming sensor reading passes through a **rule-based classification pipel
 
 | Conditions                        | Risk Level       |
 |-----------------------------------|------------------|
-| No thresholds breached            | 🟢 Low            |
-| One sensor mildly elevated        | 🟡 Moderate       |
-| One threshold breached            | 🟠 High           |
-| Multiple thresholds breached      | 🔴 Critical       |
+| No thresholds breached            | 🟢 Low           |
+| One sensor mildly elevated        | 🟡 Moderate      |
+| One threshold breached            | 🟠 High          |
+| Multiple thresholds breached      | 🔴 Critical      |
 
 On `High` or `Critical`, the alert system fires immediately — no polling, no delay.
 
@@ -83,7 +83,7 @@ On `High` or `Critical`, the alert system fires immediately — no polling, no d
 │  │  MQTT Subscriber │──►│  Risk Engine         │ │
 │  │  (subscriber.js) │   │  (riskService.js)    │ │
 │  └──────────────────┘   └──────────┬───────────┘ │
-│                                    │              │
+│                                    │             │
 │  ┌──────────────────┐   ┌──────────▼───────────┐ │
 │  │  REST API        │   │  Alert Engine        │ │
 │  │  (sensorRoutes,  │   │  (alertService.js)   │ │
@@ -113,8 +113,8 @@ On `High` or `Critical`, the alert system fires immediately — no polling, no d
 ## Tech Stack
 
 | Layer          | Technologies                                                   |
-|----------------|----------------------------------------------------------------|
-| **Hardware**   | ESP32, MPU6050 (vibration), DHT22 (temp), MQ-2/MQ-135 (gas)  |
+|----------------|---------------------------------------------------------------|
+| **Hardware**   | ESP32, MPU6050 (vibration), DHT22 (temp), MQ-2/MQ-135 (gas)   |
 | **Comms**      | MQTT, Mosquitto broker, TLS 1.2, device certificates          |
 | **Backend**    | Node.js, Express, mqtt.js, Socket.io, JWT, REST API           |
 | **Database**   | InfluxDB (time-series sensor data), PostgreSQL (alerts/users) |
