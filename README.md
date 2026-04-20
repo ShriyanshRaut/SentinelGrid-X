@@ -305,8 +305,7 @@ bun run dev       # or: npm run dev
 ## Future Scope
 
 - **ML anomaly detection** — Isolation Forest layer on top of the rule engine for multi-sensor pattern recognition
-- **Alert intelligence (PostgreSQL)** — store alert history to detect recurring patterns, frequency spikes, and false   positives  
-- **Alert intelligence (PostgreSQL)** — analyze alert history to detect recurring patterns, frequency spikes, and  false positives
+- **Alert intelligence (PostgreSQL)** — store alert history to detect recurring patterns, frequency spikes, and false   positives
 - **Mobile interface (in progress)** — building a React Native app to view live sensor data and alerts on the go 
 - **Multi-site support** — single dashboard managing distributed sensor grids  
 
