@@ -3,7 +3,7 @@ const pool = require("../db/postgres");
 async function getAlerts(req, res) {
   try {
     const result = await pool.query(
-      "SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 20"
+      "SELECT * FROM alerts ORDER BY created_at DESC LIMIT 20"
     );
 
     console.log("Fetched alerts:", result.rows.length);
@@ -14,7 +14,7 @@ async function getAlerts(req, res) {
       temp: row.temp,
       vibration: row.vibration,
       status: row.status,
-      timestamp: new Date(row.timestamp).toISOString(), // ✅ FIXED
+      timestamp: new Date(row.created_at).toISOString(),
     }));
 
     res.status(200).json(formatted);

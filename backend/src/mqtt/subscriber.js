@@ -5,16 +5,19 @@ const { writeSensorData } = require("../db/influx");
 const { createAlert } = require("../services/alertService");
 const logger = require("../utils/logger");
 
-// Env config
 const MQTT_BROKER =
-  process.env.MQTT_BROKER || "mqtt://test.mosquitto.org";
+  process.env.MQTT_BROKER || "wss://broker.hivemq.com:8884/mqtt";
+
 const TOPIC =
   process.env.MQTT_TOPIC || "sentinelgrid/shriyansh/device1";
 
-// 🧠 Prevent duplicate processing
 let lastTimestamp = null;
 
-const client = mqtt.connect(MQTT_BROKER);
+const client = mqtt.connect(MQTT_BROKER, {
+  reconnectPeriod: 1000,
+});
+
+console.log("MQTT Subscriber starting...");
 
 client.on("connect", () => {
   logger.info(`Connected to MQTT Broker: ${MQTT_BROKER}`);
@@ -35,47 +38,39 @@ client.on("message", async (topic, message, packet) => {
     const raw = message.toString();
     const data = JSON.parse(raw);
 
-    console.log("📡 RAW MQTT:", data);
+    console.log("RAW MQTT:", data);
 
-    // 🧠 Ignore retained messages (important for public broker)
     if (packet.retain) {
-      console.log("⚠️ Ignored retained message");
       return;
     }
 
-    // Gate 2: Validation
     if (!isValidSensorData(data)) {
       logger.error("Invalid sensor data received", data);
       return;
     }
 
-    // Gate 3: Formatting
     const formattedData = formatSensorData(data);
 
-    // 🧠 Ensure timestamp exists
     if (!formattedData.timestamp) {
       formattedData.timestamp = new Date().toISOString();
     }
 
-    // 🧠 Duplicate filter
     if (formattedData.timestamp === lastTimestamp) return;
     lastTimestamp = formattedData.timestamp;
 
-    // Gate 4: InfluxDB
     try {
       writeSensorData(formattedData);
-      console.log("📥 Written to Influx:", formattedData);
+      console.log("Written to Influx:", formattedData);
     } catch (err) {
       logger.error("Influx write failed", err);
     }
 
     logger.info(`STATUS: ${formattedData.status}`);
 
-    // Gate 5: Alert Logic
     if (formattedData.status === "HIGH") {
       try {
         logger.warn(
-          `🚨 NEW ALERT → gas=${formattedData.gas}, temp=${formattedData.temp}`
+          `NEW ALERT gas=${formattedData.gas}, temp=${formattedData.temp}`
         );
 
         await createAlert(formattedData);
@@ -88,7 +83,6 @@ client.on("message", async (topic, message, packet) => {
   }
 });
 
-// Stability
 client.on("error", (err) => {
   logger.error("MQTT Connection Error:", err);
 });
