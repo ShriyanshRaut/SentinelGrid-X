@@ -1,7 +1,7 @@
 // ---------------- CONFIG ----------------
 
 export const API_BASE =
-  import.meta.env.VITE_API_URL || "http://10.68.14.80:5000/api";
+  import.meta.env.VITE_API_URL || "http://192.168.1.17:5000/api";
 
 // ---------------- TYPES ----------------
 
@@ -71,7 +71,6 @@ export const fetchAlerts = async (): Promise<AlertItem[]> => {
 // ---------------- UTILS ----------------
 
 export function formatTimestamp(ts: string): string {
-  // 👇 force treat as UTC
   const d = new Date(ts.endsWith("Z") ? ts : ts + "Z");
 
   if (isNaN(d.getTime())) return ts;
