@@ -12,21 +12,25 @@ const client = new InfluxDB({ url, token });
 const writeApi = client.getWriteApi(org, bucket);
 const queryApi = client.getQueryApi(org);
 
-// WRITE FUNCTION
 function writeSensorData(data) {
   const point = new Point("sensor_data")
-    .floatField("gas", data.gas)
-    .floatField("temp", data.temp)
-    .intField("vibration", data.vibration)
-    .stringField("status", data.status)
+    .floatField("gas", Number(data.gas) || 0)
+    .floatField("temp", Number(data.temp) || 0)
+    .floatField("vibration", Number(data.vibration) || 0)
+
+    .stringField("status", data.status || "NORMAL")
+
+    .floatField("mlScore", Number(data.mlScore) || 0)
+    .stringField("mlRisk", data.mlRisk || "LOW")
+    .booleanField("mlAnomaly", Boolean(data.mlAnomaly))
+
     .timestamp(new Date(data.timestamp));
 
   writeApi.writePoint(point);
 }
 
-// EXPORT EVERYTHING
 module.exports = {
   writeSensorData,
   writeApi,
-  queryApi
+  queryApi,
 };
