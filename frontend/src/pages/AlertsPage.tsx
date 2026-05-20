@@ -50,7 +50,11 @@ const AlertsPage = () => {
     };
   }, []);
 
-  const highRisk = alerts;
+  const highRisk = alerts.filter((a) =>
+    Number(a.gas) > 70 ||
+    Number(a.vibration) > 1 ||
+    Number(a.mlScore ?? 0) > 0.7
+  );
 
   return (
     <AppShell
