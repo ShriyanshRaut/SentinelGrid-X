@@ -31,7 +31,7 @@ def predict(data: SensorData):
 
     score = float(model.decision_function(df)[0])
 
-    anomaly = bool(prediction == -1)
+    anomaly = bool(prediction == -1 or score < 0.03)
 
     if score < 0:
         risk = "CRITICAL"
