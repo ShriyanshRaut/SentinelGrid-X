@@ -50,15 +50,7 @@ const AlertsPage = () => {
     };
   }, []);
 
-  const highRisk = alerts.filter((a) =>
-    String(
-      a.risk_level ??
-        a.mlRisk ??
-        a.status
-    )
-      .toUpperCase()
-      .includes("HIGH")
-  );
+  const highRisk = alerts;
 
   return (
     <AppShell
