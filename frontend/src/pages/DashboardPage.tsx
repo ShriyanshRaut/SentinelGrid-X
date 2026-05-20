@@ -49,7 +49,9 @@ const DashboardPage = () => {
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
@@ -123,6 +125,7 @@ const DashboardPage = () => {
         score: s.mlScore,
         anomaly: s.mlAnomaly,
       })),
+
       ...alerts.map((a) => ({
         risk: a.mlRisk,
         score: a.mlScore,
@@ -143,11 +146,17 @@ const DashboardPage = () => {
     all.forEach((x) => {
       const risk = String(x.risk ?? "").toUpperCase();
 
-      if (risk === "HIGH") buckets.HIGH++;
-      else if (risk === "MEDIUM") buckets.MEDIUM++;
-      else if (risk === "LOW") buckets.LOW++;
+      if (risk === "CRITICAL" || risk === "HIGH") {
+        buckets.HIGH++;
+      } else if (risk === "MEDIUM") {
+        buckets.MEDIUM++;
+      } else {
+        buckets.LOW++;
+      }
 
-      if (x.anomaly) anomalies++;
+      if (x.anomaly || risk === "CRITICAL") {
+        anomalies++;
+      }
 
       if (typeof x.score === "number") {
         totalScore += x.score;
