@@ -1,46 +1,43 @@
 import { Flame, Thermometer, Waves } from "lucide-react";
 import type { SensorReading } from "@/lib/api";
 import { formatTimestamp } from "@/lib/api";
+import MlBadge from "@/components/MlBadge";
 
 interface SensorCardProps {
-  sensor: SensorReading;
+  sensor: SensorReading & {
+    id?: number;
+    sensorId?: string;
+    status?: string;
+    mlScore?: number;
+    mlRisk?: string;
+    mlAnomaly?: boolean;
+  };
 }
 
 const SensorCard = ({ sensor }: SensorCardProps) => {
-  // derive status
   const isHigh =
+    String(sensor.status).toUpperCase() === "HIGH" ||
     (sensor.gas ?? 0) > 80 ||
     (sensor.temp ?? 0) > 50 ||
     (sensor.vibration ?? 0) > 1;
 
-  // short time (HH:MM:SS)
   const timeLabel = sensor.timestamp
     ? sensor.timestamp.slice(11, 19)
-    : "--:--:--";
-
-  // full formatted time (IST)
-  const fullTime = sensor.timestamp
-    ? new Date(sensor.timestamp).toLocaleTimeString("en-IN", {
-        timeZone: "Asia/Kolkata",
-      })
     : "--:--:--";
 
   return (
     <div className="glass rounded-2xl p-6 border-gradient hover:-translate-y-1 transition-transform duration-500">
       <div className="flex items-center justify-between mb-5">
         <div>
-          {/* short time */}
           <p className="font-mono text-xs text-muted-foreground">
-            #{timeLabel}
+            {sensor.sensorId ?? `#${sensor.id ?? timeLabel}`}
           </p>
 
-          {/* full timestamp */}
-          <p className="font-mono text-xs text-muted-foreground">
-            {fullTime}
+          <p className="text-xs text-muted-foreground mt-1">
+            {formatTimestamp(sensor.timestamp)}
           </p>
         </div>
 
-        {/* status badge */}
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-mono border ${
             isHigh
@@ -57,7 +54,6 @@ const SensorCard = ({ sensor }: SensorCardProps) => {
         </span>
       </div>
 
-      {/* metrics */}
       <div className="grid grid-cols-3 gap-3">
         <Metric
           icon={<Flame className="h-4 w-4" />}
@@ -66,6 +62,7 @@ const SensorCard = ({ sensor }: SensorCardProps) => {
           unit="ppm"
           color="hsl(217 100% 62%)"
         />
+
         <Metric
           icon={<Thermometer className="h-4 w-4" />}
           label="Temp"
@@ -73,6 +70,7 @@ const SensorCard = ({ sensor }: SensorCardProps) => {
           unit="°C"
           color="hsl(265 90% 66%)"
         />
+
         <Metric
           icon={<Waves className="h-4 w-4" />}
           label="Vib"
@@ -81,6 +79,18 @@ const SensorCard = ({ sensor }: SensorCardProps) => {
           color="hsl(190 95% 60%)"
         />
       </div>
+
+      {(sensor.mlRisk != null ||
+        sensor.mlScore != null ||
+        sensor.mlAnomaly) && (
+        <div className="mt-4 pt-4 border-t border-border/60">
+          <MlBadge
+            risk={sensor.mlRisk}
+            score={sensor.mlScore}
+            anomaly={sensor.mlAnomaly}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -104,6 +114,7 @@ const Metric = ({
       style={{ color }}
     >
       {icon}
+
       <span className="text-[10px] font-mono uppercase tracking-wider">
         {label}
       </span>
@@ -111,8 +122,9 @@ const Metric = ({
 
     <div className="flex items-baseline gap-1">
       <span className="font-display text-xl font-bold text-foreground">
-        {value != null ? value.toFixed(1) : "--"}
+        {typeof value === "number" ? value.toFixed(1) : "--"}
       </span>
+
       <span className="text-[10px] text-muted-foreground font-mono">
         {unit}
       </span>

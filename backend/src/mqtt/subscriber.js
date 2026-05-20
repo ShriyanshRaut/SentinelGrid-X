@@ -3,6 +3,7 @@ const { isValidSensorData } = require("../utils/validator");
 const { formatSensorData } = require("../utils/formatter");
 const { writeSensorData } = require("../db/influx");
 const { createAlert } = require("../services/alertService");
+const { getMLPrediction } = require("../services/mlService");
 const logger = require("../utils/logger");
 
 const MQTT_BROKER =
@@ -51,6 +52,14 @@ client.on("message", async (topic, message, packet) => {
 
     const formattedData = formatSensorData(data);
 
+    const mlResult = await getMLPrediction(formattedData);
+
+    console.log("ML Prediction:", mlResult);
+
+    formattedData.mlScore = mlResult.score;
+    formattedData.mlRisk = mlResult.risk;
+    formattedData.mlAnomaly = mlResult.anomaly;
+
     if (!formattedData.timestamp) {
       formattedData.timestamp = new Date().toISOString();
     }
@@ -66,11 +75,15 @@ client.on("message", async (topic, message, packet) => {
     }
 
     logger.info(`STATUS: ${formattedData.status}`);
+    logger.info(`ML RISK: ${formattedData.mlRisk}`);
 
-    if (formattedData.status === "HIGH") {
+    if (
+      formattedData.status === "HIGH" ||
+      formattedData.mlAnomaly
+    ) {
       try {
         logger.warn(
-          `NEW ALERT gas=${formattedData.gas}, temp=${formattedData.temp}`
+          `NEW ALERT gas=${formattedData.gas}, temp=${formattedData.temp}, mlRisk=${formattedData.mlRisk}`
         );
 
         await createAlert(formattedData);
