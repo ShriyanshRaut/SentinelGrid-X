@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Flame, Thermometer, Bell, Waves } from "lucide-react";
+import { Flame, Thermometer, Bell, Waves, BrainCircuit } from "lucide-react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -54,6 +54,7 @@ const DashboardPage = () => {
     };
 
     load();
+
     const interval = setInterval(load, 5000);
 
     return () => {
@@ -63,16 +64,14 @@ const DashboardPage = () => {
   }, []);
 
   const { avgGas, avgTemp, avgVib, chartData } = useMemo(() => {
-    //  ONLY KEEP FULLY VALID SENSOR ROWS
     const validSensors = sensors.filter(
       (s) =>
         typeof s.gas === "number" &&
         typeof s.temp === "number" &&
         typeof s.vibration === "number" &&
-        s.timestamp // also ensure timestamp exists
+        s.timestamp
     );
 
-    //  IF NOTHING VALID → SAFE EMPTY STATE
     if (validSensors.length === 0) {
       return {
         avgGas: "—",
@@ -82,7 +81,6 @@ const DashboardPage = () => {
       };
     }
 
-    //  SAFE SUM
     const sum = validSensors.reduce(
       (acc, s) => ({
         gas: acc.gas + s.gas!,
@@ -94,15 +92,13 @@ const DashboardPage = () => {
 
     const n = validSensors.length;
 
-    //  SORT BY TIME (SAFE)
     const sorted = [...validSensors].sort(
       (a, b) =>
         new Date(a.timestamp!).getTime() -
         new Date(b.timestamp!).getTime()
     );
 
-    // BUILD CHART DATA
-    const chart = sorted.map((s, i) => ({
+    const chart = sorted.map((s) => ({
       t: new Date(s.timestamp!).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -120,9 +116,57 @@ const DashboardPage = () => {
     };
   }, [sensors]);
 
+  const aiRisk = useMemo(() => {
+    const all = [
+      ...sensors.map((s) => ({
+        risk: s.mlRisk,
+        score: s.mlScore,
+        anomaly: s.mlAnomaly,
+      })),
+      ...alerts.map((a) => ({
+        risk: a.mlRisk,
+        score: a.mlScore,
+        anomaly: a.mlAnomaly,
+      })),
+    ];
+
+    const buckets = {
+      HIGH: 0,
+      MEDIUM: 0,
+      LOW: 0,
+    };
+
+    let anomalies = 0;
+    let totalScore = 0;
+    let scoreCount = 0;
+
+    all.forEach((x) => {
+      const risk = String(x.risk ?? "").toUpperCase();
+
+      if (risk === "HIGH") buckets.HIGH++;
+      else if (risk === "MEDIUM") buckets.MEDIUM++;
+      else if (risk === "LOW") buckets.LOW++;
+
+      if (x.anomaly) anomalies++;
+
+      if (typeof x.score === "number") {
+        totalScore += x.score;
+        scoreCount++;
+      }
+    });
+
+    return {
+      buckets,
+      anomalies,
+      avgScore:
+        scoreCount > 0
+          ? (totalScore / scoreCount).toFixed(3)
+          : "—",
+    };
+  }, [sensors, alerts]);
+
   const totalAlerts = alerts.length;
 
-  //  LOADING
   if (loading && sensors.length === 0) {
     return (
       <AppShell
@@ -134,7 +178,6 @@ const DashboardPage = () => {
     );
   }
 
-  // ERROR
   if (error) {
     return (
       <AppShell
@@ -151,7 +194,6 @@ const DashboardPage = () => {
       title="Dashboard"
       subtitle="Operational overview across all monitored facilities."
     >
-      {/* STATS */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
         <StatCard
           icon={Flame}
@@ -160,6 +202,7 @@ const DashboardPage = () => {
           unit="ppm"
           accent="hsl(217 100% 62%)"
         />
+
         <StatCard
           icon={Thermometer}
           label="Avg temperature"
@@ -167,6 +210,7 @@ const DashboardPage = () => {
           unit="°C"
           accent="hsl(265 90% 66%)"
         />
+
         <StatCard
           icon={Waves}
           label="Avg vibration"
@@ -174,6 +218,7 @@ const DashboardPage = () => {
           unit="g"
           accent="hsl(190 95% 60%)"
         />
+
         <StatCard
           icon={Bell}
           label="Total alerts"
@@ -182,7 +227,66 @@ const DashboardPage = () => {
         />
       </div>
 
-      {/* CHARTS */}
+      <div className="glass rounded-2xl p-6 border-gradient mb-10">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 grid place-items-center">
+            <BrainCircuit className="h-5 w-5 text-primary" />
+          </div>
+
+          <div>
+            <h2 className="font-display text-xl font-semibold">
+              AI Risk Intelligence
+            </h2>
+
+            <p className="text-sm text-muted-foreground">
+              Live anomaly and ML risk analysis
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            <p className="text-xs font-mono text-muted-foreground mb-2">
+              HIGH RISK
+            </p>
+
+            <p className="text-3xl font-bold text-destructive">
+              {aiRisk.buckets.HIGH}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            <p className="text-xs font-mono text-muted-foreground mb-2">
+              MEDIUM RISK
+            </p>
+
+            <p className="text-3xl font-bold text-yellow-400">
+              {aiRisk.buckets.MEDIUM}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            <p className="text-xs font-mono text-muted-foreground mb-2">
+              ANOMALIES
+            </p>
+
+            <p className="text-3xl font-bold text-primary">
+              {aiRisk.anomalies}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            <p className="text-xs font-mono text-muted-foreground mb-2">
+              AVG ML SCORE
+            </p>
+
+            <p className="text-3xl font-bold text-foreground">
+              {aiRisk.avgScore}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {chartData.length === 0 ? (
         <StateMessage
           variant="empty"
@@ -197,6 +301,7 @@ const DashboardPage = () => {
             color="hsl(217 100% 62%)"
             unit="ppm"
           />
+
           <ChartPanel
             title="Temperature over time"
             dataKey="temperature"
@@ -204,6 +309,7 @@ const DashboardPage = () => {
             color="hsl(265 90% 66%)"
             unit="°C"
           />
+
           <ChartPanel
             title="Vibration over time"
             dataKey="vibration"
@@ -242,6 +348,7 @@ const ChartPanel = ({
       <h3 className="font-display font-semibold text-base">
         {title}
       </h3>
+
       <span className="text-xs font-mono text-muted-foreground">
         {unit}
       </span>
@@ -257,14 +364,18 @@ const ChartPanel = ({
             stroke="hsl(232 25% 16%)"
             strokeDasharray="3 3"
           />
+
           <XAxis
             dataKey="t"
             tick={{ fill: "hsl(220 15% 65%)", fontSize: 10 }}
           />
+
           <YAxis
             tick={{ fill: "hsl(220 15% 65%)", fontSize: 10 }}
           />
+
           <Tooltip />
+
           <Line
             type="monotone"
             dataKey={dataKey}

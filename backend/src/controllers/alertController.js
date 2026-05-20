@@ -10,10 +10,17 @@ async function getAlerts(req, res) {
 
     const formatted = result.rows.map((row) => ({
       id: row.id,
+
       gas: row.gas,
       temp: row.temp,
       vibration: row.vibration,
+
       status: row.status,
+
+      mlScore: row.ml_score,
+      mlRisk: row.ml_risk,
+      mlAnomaly: row.ml_anomaly,
+
       timestamp: new Date(row.created_at).toISOString(),
     }));
 

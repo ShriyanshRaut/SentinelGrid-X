@@ -1,9 +1,17 @@
 import { AlertOctagon } from "lucide-react";
 import type { AlertItem } from "@/lib/api";
 import { formatTimestamp } from "@/lib/api";
+import MlBadge from "@/components/app/MlBadge";
 
 interface AlertCardProps {
-  alert: AlertItem;
+  alert: AlertItem & {
+    sensorId?: string;
+    message?: string;
+    risk?: string;
+    mlScore?: number;
+    mlRisk?: string;
+    mlAnomaly?: boolean;
+  };
 }
 
 const AlertCard = ({ alert }: AlertCardProps) => {
@@ -25,7 +33,8 @@ const AlertCard = ({ alert }: AlertCardProps) => {
         </div>
 
         <h3 className="font-display font-semibold text-lg mb-1">
-          Critical reading on sensor
+          {alert.message ??
+            `Critical reading on ${alert.sensorId ?? "sensor"}`}
         </h3>
 
         <p className="text-xs font-mono text-muted-foreground mb-4">
@@ -37,6 +46,18 @@ const AlertCard = ({ alert }: AlertCardProps) => {
           <Stat label="Temp" value={alert.temp} unit="°C" />
           <Stat label="Vib" value={alert.vibration} unit="g" />
         </div>
+
+        {(alert.mlRisk != null ||
+          alert.mlScore != null ||
+          alert.mlAnomaly) && (
+          <div className="mt-4 pt-4 border-t border-destructive/20">
+            <MlBadge
+              risk={alert.mlRisk ?? alert.risk}
+              score={alert.mlScore}
+              anomaly={alert.mlAnomaly}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -58,8 +79,10 @@ const Stat = ({
       <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
+
       <p className="font-display text-base font-bold text-foreground">
-        {value.toFixed(1)}
+        {typeof value === "number" ? value.toFixed(1) : "--"}
+
         <span className="text-[10px] text-muted-foreground font-mono ml-1">
           {unit}
         </span>

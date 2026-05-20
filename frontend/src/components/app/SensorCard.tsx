@@ -1,8 +1,7 @@
 import { Flame, Thermometer, Waves } from "lucide-react";
 import type { SensorReading } from "@/lib/api";
 import { formatTimestamp } from "@/lib/api";
-import MlBadge from "@/components/MlBadge";
-
+import MlBadge from "@/components/app/MlBadge";
 interface SensorCardProps {
   sensor: SensorReading & {
     id?: number;

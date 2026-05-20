@@ -1,27 +1,40 @@
-// ---------------- CONFIG ----------------
-
 export const API_BASE =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-// ---------------- TYPES ----------------
-
 export type SensorReading = {
-  gas?: number;
-  temp?: number; // matches backend
-  vibration?: number;
-  timestamp: string;
-};
+  id?: string | number;
+  sensorId?: string;
 
-export type AlertItem = {
-  id?: number;
   gas?: number;
   temp?: number;
   vibration?: number;
-  status?: "HIGH" | "MEDIUM" | "LOW";
+
+  status?: "NORMAL" | "HIGH" | "MEDIUM" | string;
+
   timestamp: string;
+
+  mlScore?: number;
+  mlRisk?: "HIGH" | "MEDIUM" | "LOW" | string;
+  mlAnomaly?: boolean;
 };
 
-// ---------------- CORE REQUEST ----------------
+export type AlertItem = {
+  id?: string | number;
+  sensorId?: string;
+  message?: string;
+
+  gas?: number;
+  temp?: number;
+  vibration?: number;
+
+  status?: "HIGH" | "MEDIUM" | "LOW" | string;
+
+  timestamp: string;
+
+  mlScore?: number;
+  mlRisk?: "HIGH" | "MEDIUM" | "LOW" | string;
+  mlAnomaly?: boolean;
+};
 
 async function request<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`);
@@ -34,12 +47,9 @@ async function request<T>(path: string): Promise<T> {
   return data as T;
 }
 
-// ---------------- API ----------------
-
 export const fetchSensors = async (): Promise<SensorReading[]> => {
   const data = await request<SensorReading[]>("/sensors");
 
-  //  defensive filtering (prevents UI crashes)
   return data
     .filter(
       (s) =>
@@ -50,25 +60,50 @@ export const fetchSensors = async (): Promise<SensorReading[]> => {
           typeof s.vibration === "number")
     )
     .map((s) => ({
+      id: s.id,
+      sensorId: s.sensorId,
+
       gas: s.gas,
       temp: s.temp,
       vibration: s.vibration,
+
+      status: s.status,
+
+      mlScore: s.mlScore,
+      mlRisk: s.mlRisk,
+      mlAnomaly: s.mlAnomaly,
+
       timestamp: s.timestamp,
     }));
 };
 
-// Alerts (already good)
 export const fetchAlerts = async (): Promise<AlertItem[]> => {
   const data = await request<AlertItem[]>("/alerts");
 
-  return data.filter(
-    (a) =>
-      a &&
-      typeof a.timestamp === "string"
-  );
-};
+  return data
+    .filter(
+      (a) =>
+        a &&
+        typeof a.timestamp === "string"
+    )
+    .map((a) => ({
+      id: a.id,
+      sensorId: a.sensorId,
+      message: a.message,
 
-// ---------------- UTILS ----------------
+      gas: a.gas,
+      temp: a.temp,
+      vibration: a.vibration,
+
+      status: a.status,
+
+      mlScore: a.mlScore,
+      mlRisk: a.mlRisk,
+      mlAnomaly: a.mlAnomaly,
+
+      timestamp: a.timestamp,
+    }));
+};
 
 export function formatTimestamp(ts: string): string {
   const d = new Date(ts.endsWith("Z") ? ts : ts + "Z");
@@ -77,12 +112,12 @@ export function formatTimestamp(ts: string): string {
 
   return d.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
     hour12: true,
-  });
+  }) + " IST";
 }
