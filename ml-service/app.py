@@ -3,26 +3,21 @@ from pydantic import BaseModel
 import joblib
 import pandas as pd
 
-# Load trained model
 model = joblib.load("model/isolation_forest.pkl")
 
-# Create FastAPI app
 app = FastAPI(title="SentinelGrid ML Service")
 
-# Request schema
 class SensorData(BaseModel):
     gas: float
     temp: float
     vibration: float
 
-# Root route
 @app.get("/")
 def root():
     return {
         "message": "SentinelGrid ML Service Running"
     }
 
-# Prediction route
 @app.post("/predict")
 def predict(data: SensorData):
 
@@ -38,12 +33,11 @@ def predict(data: SensorData):
 
     anomaly = bool(prediction == -1)
 
-    # Risk mapping
-    if score < -0.1:
+    if score < 0:
         risk = "CRITICAL"
-    elif score < 0:
+    elif score < 0.03:
         risk = "HIGH"
-    elif score < 0.05:
+    elif score < 0.08:
         risk = "MEDIUM"
     else:
         risk = "LOW"
