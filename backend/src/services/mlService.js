@@ -1,10 +1,10 @@
 const axios = require("axios");
 
-const ML_URL = "http://127.0.0.1:8000/predict";
+const ML_URL = process.env.ML_SERVICE_URL;
 
 async function getMLPrediction(sensorData) {
   try {
-    const response = await axios.post(ML_URL, {
+    const response = await axios.post(`${ML_URL}/predict`, {
       gas: sensorData.gas,
       temp: sensorData.temp,
       vibration: sensorData.vibration,
