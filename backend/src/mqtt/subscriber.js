@@ -78,15 +78,25 @@ client.on("message", async (topic, message, packet) => {
     logger.info(`ML RISK: ${formattedData.mlRisk}`);
 
     if (
-      formattedData.status === "HIGH" ||
-      formattedData.mlAnomaly
+      formattedData.mlScore > 0.05 ||
+      formattedData.mlRisk === "HIGH" ||
+      formattedData.mlRisk === "MEDIUM" ||
+      formattedData.mlAnomaly === true
     ) {
       try {
         logger.warn(
           `NEW ALERT gas=${formattedData.gas}, temp=${formattedData.temp}, mlRisk=${formattedData.mlRisk}`
         );
 
-        await createAlert(formattedData);
+        await createAlert({
+          gas: formattedData.gas,
+          temperature: formattedData.temp,
+          vibration: formattedData.vibration,
+          risk_level: formattedData.mlRisk,
+          ml_score: formattedData.mlScore,
+        });
+
+        console.log("ALERT STORED");
       } catch (err) {
         logger.error("Failed to store alert", err);
       }

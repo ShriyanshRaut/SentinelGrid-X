@@ -10,7 +10,19 @@ async function getMLPrediction(sensorData) {
       vibration: sensorData.vibration,
     });
 
-    return response.data;
+    const result = response.data;
+
+    if (result.score > 0.05) {
+      result.anomaly = true;
+
+      if (result.score > 0.7) {
+        result.risk = "HIGH";
+      } else {
+        result.risk = "MEDIUM";
+      }
+    }
+
+    return result;
 
   } catch (error) {
     console.error("ML Service Error:", error.message);
